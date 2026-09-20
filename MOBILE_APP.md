@@ -1,59 +1,32 @@
-# Kabari Gang — Android app (Capacitor)
+# Kabari Gang — Android APK
 
-The phone app is a Capacitor wrapper around the live Kabari Gang site. The site
-is server-rendered, so the APK loads it over the network instead of bundling a
-static copy. `mobile/www` only contains the offline screen.
+The APK is a thin wrapper: it opens the live site (https://kabarigang.lovable.app)
+and shows `mobile/www/index.html` only when the phone is offline.
 
-## One-time setup
+## Build the APK on GitHub
 
-1. Push this project to GitHub (Lovable → GitHub → Connect project).
-2. In GitHub: **Settings → Secrets and variables → Actions → Variables**, add
-   `KG_APP_URL` with your published site URL, e.g.
-   `https://kabarigang.lovable.app`.
+1. Connect this project to GitHub (Lovable: **+** menu → GitHub → Connect).
+2. In the repo, open **Actions → Build Android APK → Run workflow**.
+   Optionally paste a different site URL.
+3. When it finishes, download the `kabari-gang-apk` artifact and install
+   `app-debug.apk` on your phone (allow "install unknown apps").
 
-## Getting an APK
-
-- Go to the **Actions** tab → **Build Android APK** → **Run workflow**.
-- When it finishes, download the `kabari-gang-debug-apk` artifact and install
-  it on any Android phone (allow "install from unknown sources").
-
-Every push to `main` also builds a debug APK automatically.
-
-## Signed release APK (for Play Store / public distribution)
-
-Create a keystore once:
-
-```bash
-keytool -genkey -v -keystore kabari.keystore -alias kabari \
-  -keyalg RSA -keysize 2048 -validity 10000
-base64 -w0 kabari.keystore   # copy the output
-```
-
-Add these GitHub **secrets**:
-
-| Secret                      | Value                   |
-| --------------------------- | ----------------------- |
-| `ANDROID_KEYSTORE_BASE64`   | the base64 output above |
-| `ANDROID_KEYSTORE_PASSWORD` | keystore password       |
-| `ANDROID_KEY_ALIAS`         | `kabari`                |
-| `ANDROID_KEY_PASSWORD`      | key password            |
-
-The workflow then also produces `kabari-gang-release-apk`.
-
-## Building locally
+## Build locally
 
 ```bash
 bun install
-bunx cap add android      # first time only
+bunx cap add android
 bunx cap sync android
 cd android && ./gradlew assembleDebug
 ```
 
-Requires Java 21 and the Android SDK. Output:
-`android/app/build/outputs/apk/debug/app-debug.apk`.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 
-## App identity
+## Files involved
 
-- App ID: `com.kabarigang.app`
-- App name: Kabari Gang
-- Change either in `capacitor.config.ts`, then re-run `bunx cap sync android`.
+- `capacitor.config.ts` — app name, ID `com.kabarigang.app`, site URL
+- `mobile/www/index.html` — offline screen
+- `.github/workflows/android.yml` — APK build workflow
+
+For a Play Store release you need a signed build; add a keystore and switch
+the Gradle task to `assembleRelease`.
