@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "Live site URL the APK should load"
+        required: false
+        default: "https://kabarigang.lovable.app"
+  push:
+    branches: [main]
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      # Optional: set repository variable KG_APP_URL to override the site URL.
+      KG_APP_URL: ${{ inputs.app_url || vars.KG_APP_URL || 'https://kabarigang.lovable.app' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Generate Android project
+        run: |
+          bunx cap add android
+          bunx cap sync android
+
+      - name: Build debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabari-gang-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
