@@ -1,4 +1,4 @@
-name: Build Android APK
+ame: Build Android APK
 
 on:
   workflow_dispatch:
@@ -21,18 +21,30 @@ jobs:
       # Optional: set repository variable KG_APP_URL to override the site URL.
       KG_APP_URL: ${{ inputs.app_url || vars.KG_APP_URL || 'https://kabarigang.lovable.app' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # Pin the runner to Node 24 so we don't trigger the Node 20 deprecation warning.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The runner already ships the SDK; installing the obsolete
+          # "tools" package (the action's default) fails.
+          packages: ""
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Install dependencies
         run: bun install
@@ -48,7 +60,7 @@ jobs:
           cd android && ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: kabari-gang-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
