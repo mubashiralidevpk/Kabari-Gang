@@ -1,15 +1,14 @@
 name: Build Android APK
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
     inputs:
       app_url:
         description: "Live site URL the APK should load"
         required: false
-        default: "https://kabari-go-platform.lovable.app"
+        default: "https://kabarigang.lovable.app"
+  push:
+    branches: [main]
 
 concurrency:
   group: android-${{ github.ref }}
@@ -19,49 +18,50 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     env:
-      # Set repository variable KG_APP_URL to your published site,
-      # e.g. https://kabarigang.lovable.app
-      KG_APP_URL: ${{ github.event.inputs.app_url || vars.KG_APP_URL }}
-
+      # Optional: set repository variable KG_APP_URL to override the site URL.
+      KG_APP_URL: ${{ inputs.app_url || vars.KG_APP_URL || 'https://kabarigang.lovable.app' }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      # Pin the runner to Node 24 so we don't trigger the Node 20 deprecation warning.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Setup Java 21
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
+        with:
+          # The runner already ships the SDK; installing the obsolete
+          # "tools" package (the action's default) fails.
+          packages: ""
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Install dependencies
         run: bun install
 
-      - name: Add Android platform
+      - name: Generate Android project
         run: |
-          if [ ! -d android ]; then
-            bunx cap add android
-          fi
-
-      - name: Sync Capacitor
-        run: bunx cap sync android
+          bunx cap add android
+          bunx cap sync android
 
       - name: Build debug APK
         run: |
           chmod +x android/gradlew
-          cd android
-          ./gradlew assembleDebug --no-daemon
+          cd android && ./gradlew assembleDebug --no-daemon
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v6
         with:
-          name: kabari-gang-debug-apk
+          name: kabari-gang-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
